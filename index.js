@@ -1,5 +1,6 @@
 const chromium = require("chrome-aws-lambda");
-const puppeteer = require("puppeteer-core");
+const puppeteer = chromium.puppeteer;
+// const puppeteer = require("puppeteer-core");
 const functions = require("firebase-functions");
 
 const options = {
@@ -10,10 +11,16 @@ let page;
 
 async function getBrowserPage() {
   const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath,
-    headless: chromium.headless
+     args: chromium.args,
+      // args: [
+      //     '--window-size=1920,1080',
+      //     '--hide-scrollbars',
+      //     '--no-sandbox'
+      // ],
+      // defaultViewport: { width: 1200, height: 1440 },
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless
   });
   return browser.newPage();
 }
@@ -26,16 +33,26 @@ exports.html2pdf = functions
     }
 
     let url = req.originalUrl.substring(6);
+    console.log("URL: " + url); // Do we have to escape/unescape to get QS params?
 
     try {
       if (!page) {
         page = await getBrowserPage();
       }
 
-      await page.goto(url);
-      await page.emulateMedia("screen");
+      // console.log('headless',chromium.headless);
+      //
+      // console.log(page);
 
-      const pdfBuffer = await page.pdf({ printBackground: true });
+      await page.goto(url, { waitUntil: 'networkidle2' });
+      await page.setViewport({ width: 1024, height: 1440 });
+      // await page.emulateMediaType("screen");
+
+      const pdfBuffer = await page.pdf({
+          printBackground: true,
+          format: "Letter"
+      });
+      await page.close();
 
       res.set("Content-Type", "application/pdf");
       res.status(200).send(pdfBuffer);
