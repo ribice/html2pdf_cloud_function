@@ -1,14 +1,14 @@
 {
   "name": "html2pdf_cloud_function",
   "version": "1.0.0",
-  "description": "Create a PDF file from provided URL",
+  "description": "Create a PDF file from provided URL - packages updated by Andy Martin on 2021-03",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "github.com/ribice/html2pdf_cloud_function"
+    "url": "github.com/susom/html2pdf_cloud_function"
   },
   "keywords": [
     "cloud",
@@ -19,10 +19,10 @@
   "author": "Emir Ribic",
   "license": "MIT",
   "dependencies": {
-    "chrome-aws-lambda": "^1.18.1",
-    "firebase-admin": "^8.2.0",
+    "chrome-aws-lambda": "^8.0.0",
+    "firebase-admin": "^9.5.0",
     "firebase-functions": "^3.1.0",
     "iltorb": "^2.4.3",
-    "puppeteer-core": "^1.18.1"
+    "puppeteer-core": "^8.0.0"
   }
 }

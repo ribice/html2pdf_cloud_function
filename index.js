@@ -1,45 +1,67 @@
 const chromium = require("chrome-aws-lambda");
-const puppeteer = require("puppeteer-core");
+const puppeteer = chromium.puppeteer;
 const functions = require("firebase-functions");
 
 const options = {
-  timeoutSeconds: 30
+    timeoutSeconds: 30
 };
 
-let page;
+// Keep a running browser in the function
+let browser;
 
-async function getBrowserPage() {
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath,
-    headless: chromium.headless
-  });
-  return browser.newPage();
+async function getBrowser() {
+    browser = await puppeteer.launch({
+        args: chromium.args,
+        // args: [
+        //     '--window-size=1920,1080',
+        //     '--hide-scrollbars',
+        //     '--no-sandbox'
+        // ],
+        // defaultViewport: { width: 1200, height: 1440 },
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath,
+        headless: chromium.headless
+    });
+    return browser;
 }
 
 exports.html2pdf = functions
-  .runWith(options)
-  .https.onRequest(async (req, res) => {
-    if (!req.originalUrl.startsWith("/?url=")) {
-      return res.status(400).send(`url query param must be provided`);
-    }
+    .runWith(options)
+    .https.onRequest(async (req, res) => {
+        let url = req.body.url;
+        if (!url) {
+            return res.status(400).send(`missing required url\n`);
+        }
+        console.log(`Fetching ${url}`);
 
-    let url = req.originalUrl.substring(6);
+        try {
+            if (!browser) {
+                browser = await getBrowser();
+            } else {
+                console.log('Using cached browser');
+            }
 
-    try {
-      if (!page) {
-        page = await getBrowserPage();
-      }
+            const page = await browser.newPage();
+            await page.goto(url, {waitUntil: 'load'});
+            // console.log('page loaded');
 
-      await page.goto(url);
-      await page.emulateMedia("screen");
+            // NOT WORKING:
+            // await page.setViewport({width: 1024, height: 1440});
+            // await page.emulateMediaType("screen");
 
-      const pdfBuffer = await page.pdf({ printBackground: true });
+            const pdfBuffer = await page.pdf({
+                printBackground: true,
+                format: "Letter"
+            });
+            // console.log('pdf created');
 
-      res.set("Content-Type", "application/pdf");
-      res.status(200).send(pdfBuffer);
-    } catch (error) {
-      throw error;
-    }
-  });
+            await page.close();
+
+            // REPLY WITH CONTENT
+            res.set("Content-Type", "application/pdf");
+            res.status(200).send(pdfBuffer);
+        } catch (error) {
+            console.log(error.message, error.number);
+            throw error;
+        }
+    });
