@@ -6,10 +6,11 @@ const options = {
     timeoutSeconds: 30
 };
 
-let page;
+// Keep a running browser in the function
+let browser;
 
-async function getBrowserPage() {
-    const browser = await puppeteer.launch({
+async function getBrowser() {
+    browser = await puppeteer.launch({
         args: chromium.args,
         // args: [
         //     '--window-size=1920,1080',
@@ -21,7 +22,7 @@ async function getBrowserPage() {
         executablePath: await chromium.executablePath,
         headless: chromium.headless
     });
-    return browser.newPage();
+    return browser;
 }
 
 exports.html2pdf = functions
@@ -31,12 +32,19 @@ exports.html2pdf = functions
         if (!url) {
             return res.status(400).send(`missing required url\n`);
         }
+        console.log(`Fetching ${url}`);
+
         try {
-            if (!page) {
-                page = await getBrowserPage();
+            if (!browser) {
+                browser = await getBrowser();
+            } else {
+                console.log('Using cached browser');
             }
 
-            await page.goto(url, {waitUntil: 'networkidle2'});
+            const page = await browser.newPage();
+            await page.goto(url, {waitUntil: 'load'});
+            // console.log('page loaded');
+
             // NOT WORKING:
             // await page.setViewport({width: 1024, height: 1440});
             // await page.emulateMediaType("screen");
@@ -45,11 +53,15 @@ exports.html2pdf = functions
                 printBackground: true,
                 format: "Letter"
             });
+            // console.log('pdf created');
+
             await page.close();
 
+            // REPLY WITH CONTENT
             res.set("Content-Type", "application/pdf");
             res.status(200).send(pdfBuffer);
         } catch (error) {
+            console.log(error.message, error.number);
             throw error;
         }
     });
